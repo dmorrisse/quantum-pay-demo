@@ -2,8 +2,8 @@
 FROM node:18-alpine AS build
 WORKDIR /app
 
-# Install server dependencies
-COPY server/package.json server/package-lock.json* ./server/
+# Copy and install server dependencies
+COPY server ./server
 RUN cd server && npm install
 
 # Copy client files and build frontend
@@ -15,11 +15,11 @@ RUN npm install && npm run build
 FROM node:18-alpine AS production
 WORKDIR /app
 
-# Copy server
+# Copy everything needed from build stage
 COPY --from=build /app/server /app/server
-# Copy built frontend into server folder
 COPY --from=build /app/client/dist /app/server/client-build
 
+# Start the server
 WORKDIR /app/server
 EXPOSE 8080
 CMD ["node", "index.js"]
