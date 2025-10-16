@@ -2,83 +2,68 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 
-// Create an Express app
 const app = express();
+const PORT = process.env.PORT || 10000;
 
-// Support JSON request bodies
+// Middleware
 app.use(express.json());
 
-// Port can be configured via environment
-const PORT = process.env.PORT || 8080;
-
-// Create logs directory if missing
-const logsDir = path.join(__dirname, 'logs');
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir);
-}
-
-// ---- BANK SIMULATION ENDPOINTS ----
-
-// Sample bank data
-const banks = [
-  { id: 1, name: 'Partner Bank', code: 'partnerbank' },
-  { id: 2, name: 'Chase', code: 'chase' },
-  { id: 3, name: 'Wells Fargo', code: 'wellsfargo' },
-  { id: 4, name: 'Bank of America', code: 'bofa' },
-  { id: 5, name: 'Citi', code: 'citi' },
-  { id: 6, name: 'Ally', code: 'ally' },
-  { id: 7, name: 'Capital One', code: 'capitalone' },
-  { id: 8, name: 'Truist', code: 'truist' },
-  { id: 9, name: 'Santander', code: 'santander' },
-];
-
-// Endpoint to list available banks
+// ----- API ROUTES -----
 app.get('/api/banks', (req, res) => {
-  res.json(banks);
+  res.json({
+    banks: [
+      { id: 'partner-bank', name: 'Partner Bank' },
+      { id: 'mastercard-bank', name: 'Mastercard Bank' },
+      { id: 'first-financial', name: 'First Financial' },
+      { id: 'peoples-credit', name: 'Peoples Credit' },
+    ],
+  });
 });
 
-// Endpoint to simulate connecting to a bank
+let recentEvents = [];
+
 app.post('/api/connect', (req, res) => {
-  const { bankCode } = req.body;
+  const { bankId } = req.body;
 
-  // Simulate Partner Bank failure
-  if (bankCode === 'partnerbank') {
-    const errorData = {
-      timestamp: new Date().toISOString(),
-      bank: bankCode,
-      error: '500_INTERNAL_SERVER_ERROR',
-      message: 'Partner Bank connection failed.',
-    };
-
-    // Log to file (Felix can detect this)
-    fs.appendFileSync(
-      path.join(logsDir, 'error.log'),
-      JSON.stringify(errorData) + '\n'
-    );
-
-    // Respond with actual 500 error
-    return res.status(500).json({
-      success: false,
-      error: 'Partner Bank connection failed. Please contact your administrator.',
-    });
+  // Simulate a 500 error for Partner Bank
+  if (bankId === 'partner-bank') {
+    const errorEvent = { type: 'API 500', msg: 'Partner Bank connection failed', time: new Date().toISOString() };
+    recentEvents.unshift(errorEvent);
+    if (recentEvents.length > 10) recentEvents.pop();
+    return res.status(500).json({ message: 'Internal server error: Partner Bank connection failed' });
   }
 
-  // Success for other banks
-  res.json({ success: true, message: `Connected successfully to ${bankCode}` });
+  // Successful connection
+  const successEvent = { type: 'connection', outcome: 'success', bankId, time: new Date().toISOString() };
+  recentEvents.unshift(successEvent);
+  if (recentEvents.length > 10) recentEvents.pop();
+
+  res.json({
+    account: {
+      institution: bankId,
+      mask: '****1234',
+    },
+  });
 });
 
-// ---- STATIC FRONTEND SERVING ----
+app.get('/api/events/recent', (req, res) => {
+  res.json({ events: recentEvents });
+});
 
-// Path to built React app
+// ----- SERVE FRONTEND -----
 const clientBuildPath = path.join(__dirname, 'client-build');
-app.use(express.static(clientBuildPath));
 
-// Fallback: serve index.html for all non-API routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(clientBuildPath, 'index.html'));
-});
+if (fs.existsSync(clientBuildPath)) {
+  app.use(express.static(clientBuildPath));
 
-// ---- START SERVER ----
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+} else {
+  console.error('⚠️ client-build folder not found. Make sure to run npm run build in /client');
+}
+
+// ----- START SERVER -----
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✅ Server listening on port ${PORT}`);
 });
