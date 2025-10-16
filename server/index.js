@@ -145,6 +145,14 @@ if (fs.existsSync(clientBuildPath)) {
   });
 }
 
+// Serve the built React app
+const clientBuildPath = path.join(__dirname, 'client-build');
+app.use(express.static(clientBuildPath));
+
+// Handle all unmatched routes by serving index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientBuildPath, 'index.html'));
+});
 // Start the HTTP server
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
