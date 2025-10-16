@@ -1,38 +1,25 @@
-##
-# Multi-stage build for the Quantum Pay demo application.  The first stage
-# installs dependencies and builds the frontend, and the final stage
-# assembles the production bundle and runs the Node server.
-##
-
-# Build stage: install dependencies and build the client
+# -------- Build Stage --------
 FROM node:18-alpine AS build
-
 WORKDIR /app
 
 # Install server dependencies
 COPY server/package.json server/package-lock.json* ./server/
-RUN cd server && npm install --production
+RUN cd server && npm install
 
-# Install client dependencies and build the frontend
+# Install client dependencies and build
 COPY client/package.json client/package-lock.json* ./client/
-RUN cd client && npm install && npm run build
+WORKDIR /app/client
+RUN npm install && npm run build
 
-# Copy the rest of the source code into the image
-COPY server ./server
-# Copy the built client into the server's static directory.  The build
-# output is located in client/dist after running `npm run build`.
-RUN rm -rf server/client && mkdir -p server/client/dist && cp -r client/dist/* server/client/dist/
+# -------- Production Stage --------
+FROM node:18-alpine AS production
+WORKDIR /app
 
-# Final stage: run the server
-FROM node:18-alpine
+# Copy server
+COPY --from=build /app/server /app/server
+# Copy built frontend into server folder
+COPY --from=build /app/client/dist /app/server/client-build
 
 WORKDIR /app/server
-
-# Copy the built server and client files from the previous stage
-COPY --from=build /app/server /app/server
-
-ENV NODE_ENV=production
 EXPOSE 8080
-
-# Start the server
 CMD ["node", "index.js"]
