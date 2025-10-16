@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: quantum-pay-demo
+    env: docker
+    plan: free
+    branch: main
