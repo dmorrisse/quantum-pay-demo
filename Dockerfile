@@ -6,8 +6,8 @@ WORKDIR /app
 COPY server/package.json server/package-lock.json* ./server/
 RUN cd server && npm install
 
-# Install client dependencies and build
-COPY client/package.json client/package-lock.json* ./client/
+# Copy client files and build frontend
+COPY client ./client
 WORKDIR /app/client
 RUN npm install && npm run build
 
