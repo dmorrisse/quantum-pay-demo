@@ -5,7 +5,6 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Middleware
 app.use(express.json());
 
 // ----- API ROUTES -----
@@ -67,3 +66,4 @@ if (fs.existsSync(clientBuildPath)) {
 app.listen(PORT, () => {
   console.log(`✅ Server listening on port ${PORT}`);
 });
+
